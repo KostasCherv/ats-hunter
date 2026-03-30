@@ -213,9 +213,13 @@ export default function Home() {
                       <span className={styles.atsCount}>
                         {loading
                           ? '…'
-                          : counts[a.domain] != null
-                            ? counts[a.domain]!.toLocaleString()
-                            : '—'}
+                          : counts[a.domain] == null
+                            ? '—'
+                            : counts[a.domain] === -1
+                              ? '20+'
+                              : counts[a.domain] === 0
+                                ? 'none'
+                                : counts[a.domain]!.toLocaleString()}
                       </span>
                     )}
                   </button>

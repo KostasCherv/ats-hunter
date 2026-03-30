@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       try {
         const url = new URL('https://api.search.brave.com/res/v1/web/search')
         url.searchParams.set('q', query)
-        url.searchParams.set('count', '1')
+        url.searchParams.set('count', '20')
         const res = await fetch(url.toString(), {
           headers: {
             'Accept': 'application/json',
@@ -45,7 +45,9 @@ export async function POST(req: NextRequest) {
         })
         if (!res.ok) return [domain, null] as const
         const data = await res.json()
-        const count = data.web?.totalCount ?? null
+        const returned = data.web?.results?.length ?? 0
+        const moreAvailable = data.query?.more_results_available ?? false
+        const count = returned === 0 ? 0 : moreAvailable ? -1 : returned
         return [domain, count] as const
       } catch {
         return [domain, null] as const
