@@ -14,8 +14,7 @@ const mockFetch = vi.fn()
 
 beforeEach(() => {
   vi.stubGlobal('fetch', mockFetch)
-  vi.stubEnv('GOOGLE_CSE_API_KEY', 'test-key')
-  vi.stubEnv('GOOGLE_CSE_CX', 'test-cx')
+  vi.stubEnv('BRAVE_SEARCH_API_KEY', 'test-key')
   mockFetch.mockReset()
 })
 
@@ -36,7 +35,7 @@ describe('POST /api/count', () => {
   it('returns counts for valid queries', async () => {
     mockFetch.mockResolvedValue({
       ok: true,
-      json: async () => ({ searchInformation: { totalResults: '142' } }),
+      json: async () => ({ web: { totalCount: 142 } }),
     })
     const res = await POST(makeRequest({
       queries: { 'greenhouse.io': 'site:greenhouse.io "AI Engineer"' },
@@ -46,7 +45,7 @@ describe('POST /api/count', () => {
     expect(body.counts['greenhouse.io']).toBe(142)
   })
 
-  it('returns null for a domain when Google fetch fails', async () => {
+  it('returns null for a domain when fetch fails', async () => {
     mockFetch.mockResolvedValue({ ok: false })
     const res = await POST(makeRequest({
       queries: { 'greenhouse.io': 'site:greenhouse.io "AI Engineer"' },
@@ -55,18 +54,19 @@ describe('POST /api/count', () => {
     expect(body.counts['greenhouse.io']).toBeNull()
   })
 
-  it('calls Google CSE with correct URL params', async () => {
+  it('calls Brave Search with correct params', async () => {
     mockFetch.mockResolvedValue({
       ok: true,
-      json: async () => ({ searchInformation: { totalResults: '10' } }),
+      json: async () => ({ web: { totalCount: 10 } }),
     })
     await POST(makeRequest({
       queries: { 'greenhouse.io': 'site:greenhouse.io "AI Engineer"' },
     }))
     const calledUrl = new URL(mockFetch.mock.calls[0][0] as string)
-    expect(calledUrl.searchParams.get('key')).toBe('test-key')
-    expect(calledUrl.searchParams.get('cx')).toBe('test-cx')
-    expect(calledUrl.searchParams.get('num')).toBe('1')
+    const calledOptions = mockFetch.mock.calls[0][1] as RequestInit
+    expect(calledUrl.hostname).toBe('api.search.brave.com')
     expect(calledUrl.searchParams.get('q')).toBe('site:greenhouse.io "AI Engineer"')
+    expect(calledUrl.searchParams.get('count')).toBe('1')
+    expect((calledOptions.headers as Record<string, string>)['X-Subscription-Token']).toBe('test-key')
   })
 })

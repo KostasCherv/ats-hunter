@@ -23,32 +23,31 @@ export async function POST(req: NextRequest) {
   }
 
   const { queries } = parsed.data
-  const apiKey = process.env.GOOGLE_CSE_API_KEY
-  const cx = process.env.GOOGLE_CSE_CX
+  const apiKey = process.env.BRAVE_SEARCH_API_KEY
 
-  if (!apiKey || !cx) {
-    return NextResponse.json({ error: 'CSE not configured' }, { status: 500 })
+  if (!apiKey) {
+    return NextResponse.json({ error: 'Search not configured' }, { status: 500 })
   }
 
   const entries = Object.entries(queries)
   const results = await Promise.all(
     entries.map(async ([domain, query]) => {
       try {
-        const url = new URL('https://www.googleapis.com/customsearch/v1')
-        url.searchParams.set('key', apiKey)
-        url.searchParams.set('cx', cx)
+        const url = new URL('https://api.search.brave.com/res/v1/web/search')
         url.searchParams.set('q', query)
-        url.searchParams.set('num', '1')
-        const res = await fetch(url.toString())
+        url.searchParams.set('count', '1')
+        const res = await fetch(url.toString(), {
+          headers: {
+            'Accept': 'application/json',
+            'Accept-Encoding': 'gzip',
+            'X-Subscription-Token': apiKey,
+          },
+        })
+        if (!res.ok) return [domain, null] as const
         const data = await res.json()
-        if (!res.ok) {
-          console.error('CSE error:', JSON.stringify(data))
-          return [domain, null] as const
-        }
-        const count = parseInt(data.searchInformation?.totalResults ?? '0', 10)
-        return [domain, isNaN(count) ? null : count] as const
-      } catch (err) {
-        console.error('CSE fetch error:', err)
+        const count = data.web?.totalCount ?? null
+        return [domain, count] as const
+      } catch {
         return [domain, null] as const
       }
     })
