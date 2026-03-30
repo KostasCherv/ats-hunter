@@ -310,3 +310,11 @@
 
 /* LEFT COL */
 .leftCol, .rightCol { display: flex; flex-direction: column; }
+
+.atsCount {
+  margin-left: auto;
+  font-size: 11px;
+  font-family: var(--font-mono, 'DM Mono', monospace);
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}

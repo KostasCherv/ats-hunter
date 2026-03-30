@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import styles from './page.module.css'
+import { usePlatformCounts } from './hooks/usePlatformCounts'
 
 const ATS_PLATFORMS = [
   { label: 'Greenhouse', domain: 'greenhouse.io' },
@@ -91,6 +92,14 @@ export default function Home() {
   const selectedDomains = [...selected]
   const hasConfig = selectedDomains.length > 0 && titles.trim().length > 0
 
+  const queries = useMemo(() => {
+    return Object.fromEntries(
+      selectedDomains.map((domain) => [domain, buildQuery(domain)])
+    )
+  }, [selected, titles, location, workType, keywords])
+
+  const { counts, loading } = usePlatformCounts(queries, hasConfig)
+
   return (
     <div className={styles.root}>
       <header className={styles.header}>
@@ -179,6 +188,16 @@ export default function Home() {
                 <div className={styles.miniActions}>
                   <button className={styles.textBtn} onClick={() => setSelected(new Set(ATS_PLATFORMS.map(a => a.domain)))}>All</button>
                   <button className={styles.textBtn} onClick={() => setSelected(new Set())}>None</button>
+                  {hasConfig && (
+                    <button
+                      className={styles.textBtn}
+                      onClick={() => {
+                        selectedDomains.forEach((domain) => openSearch(buildQuery(domain)))
+                      }}
+                    >
+                      Open all ↗
+                    </button>
+                  )}
                 </div>
               </div>
               <div className={styles.atsGrid}>
@@ -190,6 +209,15 @@ export default function Home() {
                   >
                     <span className={styles.atsDot} />
                     <span>{a.label}</span>
+                    {selected.has(a.domain) && (
+                      <span className={styles.atsCount}>
+                        {loading
+                          ? '…'
+                          : counts[a.domain] != null
+                            ? counts[a.domain]!.toLocaleString()
+                            : '—'}
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
