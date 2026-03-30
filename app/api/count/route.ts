@@ -40,11 +40,15 @@ export async function POST(req: NextRequest) {
         url.searchParams.set('q', query)
         url.searchParams.set('num', '1')
         const res = await fetch(url.toString())
-        if (!res.ok) return [domain, null] as const
         const data = await res.json()
+        if (!res.ok) {
+          console.error('CSE error:', JSON.stringify(data))
+          return [domain, null] as const
+        }
         const count = parseInt(data.searchInformation?.totalResults ?? '0', 10)
         return [domain, isNaN(count) ? null : count] as const
-      } catch {
+      } catch (err) {
+        console.error('CSE fetch error:', err)
         return [domain, null] as const
       }
     })
