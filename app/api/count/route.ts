@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
+export const maxDuration = 60
+
 const schema = z.object({
   queries: z
     .record(z.string(), z.string())
@@ -30,30 +32,33 @@ export async function POST(req: NextRequest) {
   }
 
   const entries = Object.entries(queries)
-  const results = await Promise.all(
-    entries.map(async ([domain, query]) => {
-      try {
-        const url = new URL('https://api.search.brave.com/res/v1/web/search')
-        url.searchParams.set('q', query)
-        url.searchParams.set('count', '20')
-        const res = await fetch(url.toString(), {
-          headers: {
-            'Accept': 'application/json',
-            'Accept-Encoding': 'gzip',
-            'X-Subscription-Token': apiKey,
-          },
-        })
-        if (!res.ok) return [domain, null] as const
+  const results: [string, number | null][] = []
+  for (const [domain, query] of entries) {
+    try {
+      const url = new URL('https://api.search.brave.com/res/v1/web/search')
+      url.searchParams.set('q', query)
+      url.searchParams.set('count', '20')
+      const res = await fetch(url.toString(), {
+        headers: {
+          'Accept': 'application/json',
+          'Accept-Encoding': 'gzip',
+          'X-Subscription-Token': apiKey,
+        },
+      })
+      if (!res.ok) {
+        results.push([domain, null])
+      } else {
         const data = await res.json()
         const returned = data.web?.results?.length ?? 0
         const moreAvailable = data.query?.more_results_available ?? false
         const count = returned === 0 ? 0 : moreAvailable ? -1 : returned
-        return [domain, count] as const
-      } catch {
-        return [domain, null] as const
+        results.push([domain, count])
       }
-    })
-  )
+    } catch {
+      results.push([domain, null])
+    }
+    await new Promise(resolve => setTimeout(resolve, 1100))
+  }
 
   return NextResponse.json({ counts: Object.fromEntries(results) })
 }
