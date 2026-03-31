@@ -353,3 +353,73 @@
   padding: 9px 12px;
   outline: none;
 }
+
+.textarea {
+  width: 100%;
+  min-height: 88px;
+  resize: vertical;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--sans);
+  font-size: 14px;
+  padding: 9px 12px;
+  outline: none;
+}
+
+.matchList {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.matchItem {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  background: var(--bg);
+}
+
+.matchTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.matchLink {
+  color: var(--text-primary);
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.matchMeta {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.matchReason {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.matchScore {
+  font-size: 11px;
+  color: var(--accent);
+  border: 1px solid var(--border-accent);
+  background: var(--accent-dim);
+  border-radius: 99px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.errorText {
+  font-size: 12px;
+  color: #ff9a9a;
+}

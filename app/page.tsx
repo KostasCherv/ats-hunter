@@ -84,6 +84,14 @@ type SavedPreset = {
   form: StoredFormState
   updatedAt: number
 }
+type MatchResult = {
+  url: string
+  title: string
+  company: string
+  score: number
+  reason: string
+  snippet?: string
+}
 
 function getDefaultFormState(): StoredFormState {
   return {
@@ -188,6 +196,12 @@ export default function Home() {
   const [presetName, setPresetName] = useState('')
   const [presets, setPresets] = useState<SavedPreset[]>(getInitialPresets)
   const [selectedPresetId, setSelectedPresetId] = useState('')
+  const [matchSummary, setMatchSummary] = useState('')
+  const [matchSkills, setMatchSkills] = useState('TypeScript, React, Python')
+  const [matchLocation, setMatchLocation] = useState('')
+  const [matchLoading, setMatchLoading] = useState(false)
+  const [matchError, setMatchError] = useState('')
+  const [matchResults, setMatchResults] = useState<MatchResult[]>([])
 
   const addKeyword = useCallback(() => {
     const v = kwInput.replace(/,/g, '').trim()
@@ -330,6 +344,39 @@ export default function Home() {
     if (!selectedPresetId) return
     setPresets((prev) => prev.filter((preset) => preset.id !== selectedPresetId))
     setSelectedPresetId('')
+  }
+
+  const runAiMatch = async () => {
+    if (!hasConfig || matchLoading) return
+    setMatchLoading(true)
+    setMatchError('')
+    setMatchResults([])
+    try {
+      const response = await fetch('/api/match', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: buildQuery(null),
+          profile: {
+            summary: matchSummary,
+            skills: matchSkills.split(',').map((s) => s.trim()).filter(Boolean),
+            location: matchLocation.trim() || location.trim(),
+          },
+          maxResults: 12,
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        setMatchError(data?.error || 'Unable to match jobs right now.')
+        return
+      }
+      const incoming = Array.isArray(data?.matches) ? data.matches : []
+      setMatchResults(incoming)
+    } catch {
+      setMatchError('Unable to match jobs right now.')
+    } finally {
+      setMatchLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -572,6 +619,9 @@ export default function Home() {
                   <button className={styles.actionBtn} onClick={openTopFive} disabled={!hasConfig}>
                     Open top 5
                   </button>
+                  <button className={styles.searchBtn} onClick={runAiMatch} disabled={!hasConfig || matchLoading}>
+                    {matchLoading ? 'Matching...' : 'Match with AI'}
+                  </button>
                 </div>
               </div>
 
@@ -627,6 +677,60 @@ export default function Home() {
                     )
                   })}
                 </>
+              )}
+            </section>
+
+            <section className={styles.card}>
+              <h2 className={styles.cardTitle}>AI Match profile</h2>
+              <div className={styles.field}>
+                <label className={styles.label}>Professional summary</label>
+                <textarea
+                  className={styles.textarea}
+                  value={matchSummary}
+                  onChange={(e) => setMatchSummary(e.target.value)}
+                  placeholder="Senior backend engineer focused on AI infra, APIs, and production reliability."
+                />
+              </div>
+              <div className={styles.field}>
+                <label className={styles.label}>Must-have skills</label>
+                <input
+                  type="text"
+                  value={matchSkills}
+                  onChange={(e) => setMatchSkills(e.target.value)}
+                  placeholder="Python, FastAPI, LangGraph"
+                />
+              </div>
+              <div className={styles.field}>
+                <label className={styles.label}>Preferred location</label>
+                <input
+                  type="text"
+                  value={matchLocation}
+                  onChange={(e) => setMatchLocation(e.target.value)}
+                  placeholder="Switzerland"
+                />
+              </div>
+
+              {matchError && <p className={styles.errorText}>{matchError}</p>}
+              {!matchError && !matchLoading && matchResults.length === 0 && (
+                <p className={styles.empty}>Click Match with AI to rank current query results.</p>
+              )}
+              {matchLoading && <p className={styles.empty}>Analyzing search results...</p>}
+
+              {matchResults.length > 0 && (
+                <div className={styles.matchList}>
+                  {matchResults.map((result, index) => (
+                    <div key={`${result.url}-${index}`} className={styles.matchItem}>
+                      <div className={styles.matchTop}>
+                        <a href={result.url} target="_blank" rel="noreferrer" className={styles.matchLink}>
+                          {result.title}
+                        </a>
+                        <span className={styles.matchScore}>{Math.max(0, Math.min(100, Math.round(result.score)))}%</span>
+                      </div>
+                      <div className={styles.matchMeta}>{result.company}</div>
+                      <div className={styles.matchReason}>{result.reason}</div>
+                    </div>
+                  ))}
+                </div>
               )}
             </section>
 

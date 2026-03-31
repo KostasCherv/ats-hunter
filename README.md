@@ -20,7 +20,7 @@ Follow the prompts. Done.
 4. Framework preset: **Next.js** (auto-detected)
 5. Click **Deploy**
 
-No environment variables needed. Fully static export.
+Environment variables are required for AI Match (see below).
 
 ## Local dev
 ```bash
@@ -29,13 +29,26 @@ npm run dev
 # open http://localhost:3000
 ```
 
+## Environment variables (AI Match)
+Create `.env.local` from `.env.local.example` and set:
+
+- `BRAVE_SEARCH_API_KEY`: Brave Web Search API key
+- `OPENAI_API_KEY`: OpenAI key for ranking and explanations
+- `OPENAI_MODEL` (optional): defaults to `gpt-4.1-mini`
+- `AI_MATCH_ENABLED` (optional): set `false` to disable AI Match instantly
+
+### MVP cost note
+- Public visitors can trigger AI matching, and usage is billed to your API keys.
+- MVP uses lightweight safeguards (`maxResults` cap + timeout + kill switch) but no hard per-user limits yet.
+
 ## How it works
 - Enter role titles (comma-separated), location, work type, and skills
 - Select ATS platforms
 - Queries are generated live using Google boolean syntax: `site:greenhouse.io ("AI Engineer" OR "Backend Engineer") AND "Zurich" AND "hybrid" AND ("LangGraph" OR "Python")`
 - Click **Search →** to open Google directly, or **Copy** to paste anywhere
+- Click **Match with AI** to rank current results against your profile (summary, skills, location)
 
 ## Stack
-- Next.js 14 (static export, no server)
+- Next.js 16 (App Router + API route for AI Match)
 - TypeScript
-- Zero dependencies beyond Next.js
+- Brave Search API + OpenAI API (server-side fetch)
