@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import styles from './page.module.css'
 
 const ATS_PLATFORMS = [
@@ -27,17 +27,113 @@ const WORK_TYPES = [
   { label: 'Any', value: '' },
 ]
 
+const FRESHNESS_OPTIONS = [
+  { label: '24 hours', value: '24h' },
+  { label: '7 days', value: '7d' },
+  { label: '30 days', value: '30d' },
+] as const
+
+const DEFAULT_TITLES = 'AI Engineer, Backend Engineer'
+const DEFAULT_LOCATION = 'Zurich'
+const DEFAULT_WORK_TYPE = 'hybrid'
+const DEFAULT_KEYWORDS = ['LangGraph', 'FastAPI', 'Python']
+const DEFAULT_SELECTED_DOMAINS = [
+  'greenhouse.io',
+  'jobs.lever.co',
+  'jobs.smartrecruiters.com',
+  'jobs.ashbyhq.com',
+  'careers.workable.com',
+]
+const DEFAULT_FRESHNESS: Freshness = '7d'
+const FORM_STORAGE_KEY = 'ats-hunter:form:v1'
+
+const VALID_WORK_TYPES = new Set(WORK_TYPES.map((w) => w.value))
+const VALID_FRESHNESS = new Set(FRESHNESS_OPTIONS.map((o) => o.value))
+const VALID_DOMAINS = new Set(ATS_PLATFORMS.map((a) => a.domain))
+
 type CopyState = Record<string, boolean>
+type Freshness = (typeof FRESHNESS_OPTIONS)[number]['value']
+
+type StoredFormState = {
+  titles: string
+  location: string
+  workType: string
+  keywords: string[]
+  selected: string[]
+  freshness: Freshness
+}
+
+function getDefaultFormState(): StoredFormState {
+  return {
+    titles: DEFAULT_TITLES,
+    location: DEFAULT_LOCATION,
+    workType: DEFAULT_WORK_TYPE,
+    keywords: [...DEFAULT_KEYWORDS],
+    selected: [...DEFAULT_SELECTED_DOMAINS],
+    freshness: DEFAULT_FRESHNESS,
+  }
+}
+
+function sanitizeStoredState(raw: unknown): StoredFormState {
+  const fallback = getDefaultFormState()
+  if (!raw || typeof raw !== 'object') return fallback
+  const parsed = raw as Partial<StoredFormState>
+
+  const titles = typeof parsed.titles === 'string' ? parsed.titles : fallback.titles
+  const location = typeof parsed.location === 'string' ? parsed.location : fallback.location
+  const workType = typeof parsed.workType === 'string' && VALID_WORK_TYPES.has(parsed.workType)
+    ? parsed.workType
+    : fallback.workType
+
+  const keywords = Array.isArray(parsed.keywords)
+    ? parsed.keywords.filter((kw): kw is string => typeof kw === 'string').map((kw) => kw.trim()).filter(Boolean)
+    : fallback.keywords
+
+  const selected = Array.isArray(parsed.selected)
+    ? parsed.selected.filter((domain): domain is string => typeof domain === 'string' && VALID_DOMAINS.has(domain))
+    : fallback.selected
+
+  const freshness = typeof parsed.freshness === 'string' && VALID_FRESHNESS.has(parsed.freshness as Freshness)
+    ? parsed.freshness as Freshness
+    : fallback.freshness
+
+  return {
+    titles,
+    location,
+    workType,
+    keywords: keywords.length ? keywords : fallback.keywords,
+    selected: selected.length ? selected : fallback.selected,
+    freshness,
+  }
+}
+
+function getInitialFormState(): StoredFormState {
+  const fallback = getDefaultFormState()
+  if (typeof window === 'undefined') return fallback
+  try {
+    const raw = window.localStorage.getItem(FORM_STORAGE_KEY)
+    if (!raw) return fallback
+    return sanitizeStoredState(JSON.parse(raw))
+  } catch {
+    return fallback
+  }
+}
+
+function mapFreshnessToTbs(freshness: Freshness): string {
+  if (freshness === '24h') return 'qdr:d'
+  if (freshness === '30d') return 'qdr:m'
+  return 'qdr:w'
+}
 
 export default function Home() {
-  const [titles, setTitles] = useState('AI Engineer, Backend Engineer')
-  const [location, setLocation] = useState('Zurich')
-  const [workType, setWorkType] = useState('hybrid')
-  const [keywords, setKeywords] = useState<string[]>(['LangGraph', 'FastAPI', 'Python'])
+  const initial = getInitialFormState()
+  const [titles, setTitles] = useState(initial.titles)
+  const [location, setLocation] = useState(initial.location)
+  const [workType, setWorkType] = useState(initial.workType)
+  const [keywords, setKeywords] = useState<string[]>(initial.keywords)
+  const [freshness, setFreshness] = useState<Freshness>(initial.freshness)
   const [kwInput, setKwInput] = useState('')
-  const [selected, setSelected] = useState<Set<string>>(
-    new Set(['greenhouse.io', 'jobs.lever.co', 'jobs.smartrecruiters.com', 'jobs.ashbyhq.com', 'careers.workable.com'])
-  )
+  const [selected, setSelected] = useState<Set<string>>(new Set(initial.selected))
   const [copied, setCopied] = useState<CopyState>({})
 
   const addKeyword = useCallback(() => {
@@ -78,8 +174,11 @@ export default function Home() {
     }
   }
 
-  const openSearch = (query: string) => {
-    window.open('https://www.google.com/search?q=' + encodeURIComponent(query), '_blank')
+  const openSearch = (query: string, fresh: Freshness) => {
+    const url = new URL('https://www.google.com/search')
+    url.searchParams.set('q', query)
+    url.searchParams.set('tbs', mapFreshnessToTbs(fresh))
+    window.open(url.toString(), '_blank')
   }
 
   const copyQuery = async (key: string, query: string) => {
@@ -90,6 +189,18 @@ export default function Home() {
 
   const selectedDomains = [...selected]
   const hasConfig = selectedDomains.length > 0 && titles.trim().length > 0
+
+  useEffect(() => {
+    const state: StoredFormState = {
+      titles,
+      location,
+      workType,
+      keywords,
+      selected: [...selected],
+      freshness,
+    }
+    window.localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(state))
+  }, [titles, location, workType, keywords, selected, freshness])
 
   return (
     <div className={styles.root}>
@@ -147,6 +258,21 @@ export default function Home() {
                 </div>
               </div>
 
+              <div className={`${styles.field} ${styles.fieldCompact}`}>
+                <label className={styles.label}>Freshness</label>
+                <div className={styles.pills}>
+                  {FRESHNESS_OPTIONS.map(option => (
+                    <button
+                      key={option.value}
+                      className={`${styles.pill} ${freshness === option.value ? styles.pillActive : ''}`}
+                      onClick={() => setFreshness(option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className={styles.field}>
                 <label className={styles.label}>Skills / keywords</label>
                 <div className={styles.kwRow}>
@@ -183,7 +309,7 @@ export default function Home() {
                     <button
                       className={styles.textBtn}
                       onClick={() => {
-                        selectedDomains.forEach((domain) => openSearch(buildQuery(domain)))
+                        selectedDomains.forEach((domain) => openSearch(buildQuery(domain), freshness))
                       }}
                     >
                       Open all ↗
@@ -230,7 +356,7 @@ export default function Home() {
                             <button className={styles.actionBtn} onClick={() => copyQuery('combined', q)}>
                               {copied['combined'] ? '✓ Copied' : 'Copy'}
                             </button>
-                            <button className={`${styles.actionBtn} ${styles.searchBtn}`} onClick={() => openSearch(q)}>
+                            <button className={`${styles.actionBtn} ${styles.searchBtn}`} onClick={() => openSearch(q, freshness)}>
                               Search →
                             </button>
                           </div>
@@ -253,7 +379,7 @@ export default function Home() {
                             <button className={styles.actionBtn} onClick={() => copyQuery(domain, q)}>
                               {copied[domain] ? '✓ Copied' : 'Copy'}
                             </button>
-                            <button className={`${styles.actionBtn} ${styles.searchBtn}`} onClick={() => openSearch(q)}>
+                            <button className={`${styles.actionBtn} ${styles.searchBtn}`} onClick={() => openSearch(q, freshness)}>
                               Search →
                             </button>
                           </div>

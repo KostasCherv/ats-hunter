@@ -88,6 +88,7 @@
 /* FIELDS */
 .field { margin-bottom: 1rem; }
 .field:last-child { margin-bottom: 0; }
+.fieldCompact { margin-top: -2px; }
 .fieldRow {
   display: grid;
   grid-template-columns: 1fr 1fr;
