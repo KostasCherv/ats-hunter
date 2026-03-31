@@ -28,6 +28,7 @@ const WORK_TYPES = [
 ]
 
 const FRESHNESS_OPTIONS = [
+  { label: 'Any time', value: 'any' },
   { label: '24 hours', value: '24h' },
   { label: '7 days', value: '7d' },
   { label: '30 days', value: '30d' },
@@ -101,7 +102,7 @@ function sanitizeStoredState(raw: unknown): StoredFormState {
     titles,
     location,
     workType,
-    keywords: keywords.length ? keywords : fallback.keywords,
+    keywords,
     selected: selected.length ? selected : fallback.selected,
     freshness,
   }
@@ -119,7 +120,8 @@ function getInitialFormState(): StoredFormState {
   }
 }
 
-function mapFreshnessToTbs(freshness: Freshness): string {
+function mapFreshnessToTbs(freshness: Freshness): string | null {
+  if (freshness === 'any') return null
   if (freshness === '24h') return 'qdr:d'
   if (freshness === '30d') return 'qdr:m'
   return 'qdr:w'
@@ -177,7 +179,10 @@ export default function Home() {
   const openSearch = (query: string, fresh: Freshness) => {
     const url = new URL('https://www.google.com/search')
     url.searchParams.set('q', query)
-    url.searchParams.set('tbs', mapFreshnessToTbs(fresh))
+    const tbs = mapFreshnessToTbs(fresh)
+    if (tbs) {
+      url.searchParams.set('tbs', tbs)
+    }
     window.open(url.toString(), '_blank')
   }
 
