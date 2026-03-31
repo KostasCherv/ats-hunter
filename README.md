@@ -32,7 +32,10 @@ npm run dev
 ## Environment variables (AI Match)
 Create `.env.local` from `.env.local.example` and set:
 
-- `BRAVE_SEARCH_API_KEY`: Brave Web Search API key
+- `SEARCH_PROVIDER`: `google-serpapi` (recommended), `google-cse`, or `tavily`
+- `SERPAPI_API_KEY`: Google results via SerpAPI
+- `GOOGLE_CSE_API_KEY` + `GOOGLE_CSE_CX`: Google CSE provider (optional fallback)
+- `TAVILY_API_KEY`: Tavily provider (optional fallback)
 - `OPENAI_API_KEY`: OpenAI key for ranking and explanations
 - `OPENAI_MODEL` (optional): defaults to `gpt-4.1-mini`
 - `AI_MATCH_ENABLED` (optional): set `false` to disable AI Match instantly
@@ -51,4 +54,4 @@ Create `.env.local` from `.env.local.example` and set:
 ## Stack
 - Next.js 16 (App Router + API route for AI Match)
 - TypeScript
-- Brave Search API + OpenAI API (server-side fetch)
+- Google search provider (SerpAPI/CSE) + optional Tavily fallback + OpenAI API (server-side fetch)

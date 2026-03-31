@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { searchWeb } from '@/app/lib/match/search'
+import { filterReachableHits, searchWeb } from '@/app/lib/match/search'
 import { rankMatchesWithLlm } from '@/app/lib/match/scoring'
 
 export const maxDuration = 60
@@ -70,7 +70,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ matches: [] })
     }
 
-    const matches = await rankMatchesWithLlm(hits, parsed.profile, abortController.signal)
+    // Exclude stale/dead listings to avoid returning broken URLs.
+    const reachableHits = await filterReachableHits(hits)
+    const effectiveHits = reachableHits.length > 0 ? reachableHits : hits
+    const matches = await rankMatchesWithLlm(effectiveHits, parsed.profile, abortController.signal)
 
     console.info('[ai-match]', JSON.stringify({
       event: 'match_completed',
@@ -78,6 +81,7 @@ export async function POST(req: NextRequest) {
       queryLength: parsed.query.length,
       maxResults: parsed.maxResults,
       returnedHits: hits.length,
+      reachableHits: reachableHits.length,
       returnedMatches: matches.length,
       model: process.env.OPENAI_MODEL || 'gpt-4.1-mini',
     }))
