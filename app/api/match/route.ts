@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { searchWeb } from '@/app/lib/match/search'
 import { rankMatchesWithLlm } from '@/app/lib/match/scoring'
 
-export const maxDuration = 30
+export const maxDuration = 60
 
 type ProfileInput = {
   summary?: string
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
 
   const startedAt = Date.now()
   const abortController = new AbortController()
-  const timeoutMs = 16000
+  const timeoutMs = 26000
   const timeout = setTimeout(() => abortController.abort(), timeoutMs)
 
   try {

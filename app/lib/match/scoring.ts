@@ -100,6 +100,13 @@ export async function rankMatchesWithLlm(hits: SearchHit[], profile: MatchProfil
     return hits.map((hit) => fallbackScore(hit, profile)).sort((a, b) => b.score - a.score)
   }
 
+  // Keep token size bounded to reduce timeout risk on long snippets.
+  const compactHits = hits.map((hit) => ({
+    url: hit.url,
+    title: hit.title.slice(0, 160),
+    snippet: hit.snippet.slice(0, 260),
+  }))
+
   const prompt = [
     'Rank these job search results by fit to this profile.',
     'Return ONLY valid JSON array with items: {url,title,company,score,reason}.',
@@ -107,37 +114,46 @@ export async function rankMatchesWithLlm(hits: SearchHit[], profile: MatchProfil
     `Profile summary: ${profile.summary || 'N/A'}`,
     `Profile skills: ${profile.skills.join(', ') || 'N/A'}`,
     `Preferred location: ${profile.location || 'N/A'}`,
-    `Results: ${JSON.stringify(hits)}`,
+    `Results: ${JSON.stringify(compactHits)}`,
   ].join('\n')
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      temperature: 0.1,
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a strict JSON ranking engine.',
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-    }),
-    signal,
-  })
-
+  let response: Response
+  try {
+    response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.1,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a strict JSON ranking engine.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+      }),
+      signal,
+    })
+  } catch {
+    return hits.map((hit) => fallbackScore(hit, profile)).sort((a, b) => b.score - a.score)
+  }
   if (!response.ok) {
     return hits.map((hit) => fallbackScore(hit, profile)).sort((a, b) => b.score - a.score)
   }
 
-  const data = await response.json() as OpenAiResponse
+  let data: OpenAiResponse
+  try {
+    data = await response.json() as OpenAiResponse
+  } catch {
+    return hits.map((hit) => fallbackScore(hit, profile)).sort((a, b) => b.score - a.score)
+  }
   const content = data.choices?.[0]?.message?.content
   if (!content) {
     return hits.map((hit) => fallbackScore(hit, profile)).sort((a, b) => b.score - a.score)
