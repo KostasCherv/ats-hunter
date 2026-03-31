@@ -181,6 +181,11 @@
   display: flex;
   gap: 8px;
 }
+.quickActions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
 .textBtn {
   background: none;
   border: none;
@@ -196,6 +201,13 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 6px;
+}
+.groupLabel {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 0.25rem 0 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 .atsItem {
   display: flex;
@@ -318,4 +330,26 @@
   font-family: var(--font-mono, 'DM Mono', monospace);
   color: var(--text-muted);
   letter-spacing: 0.02em;
+}
+
+.presetRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.presetRow:last-child {
+  margin-bottom: 0;
+}
+
+.select {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--sans);
+  font-size: 14px;
+  padding: 9px 12px;
+  outline: none;
 }
